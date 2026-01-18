@@ -11,10 +11,6 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_PATH
-        value: /app/data/db.sqlite3
+        value: /app/db.sqlite3
       - key: DJANGO_SETTINGS_MODULE
         value: chat_app.settings
-    disk:
-      name: chat-app-data
-      mountPath: /app/data
-      sizeGB: 1

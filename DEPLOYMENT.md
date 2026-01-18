@@ -40,12 +40,11 @@ docker-compose down
 3. **Deploy:**
    - Click "Apply" to start the deployment
    - Render will build the Docker image and deploy your app
-   - The SQLite database will persist on the attached disk
+   - **Note:** On free tier, the SQLite database will be reset on every deployment/restart.
 
 ### Important Notes:
 
-- **SQLite Persistence:** The database is stored in `/app/data/db.sqlite3` with a 1GB persistent disk
-- **Free Tier:** Configured for Render's free plan
+- **Free Tier Limitations:** Persistent disks are not supported on free tier. Database data is ephemeral.
 - **Region:** Set to Oregon (can be changed in `render.yaml`)
 - **WebSockets:** Supported via Daphne ASGI server
 - **Static Files:** Served via WhiteNoise middleware
