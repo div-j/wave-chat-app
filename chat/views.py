@@ -1,8 +1,10 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
+from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema_view, extend_schema
-from django.shortcuts import render
-
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth import get_user_model
 
 
 from account.responseSerializers import ErrorResponseSerializer
@@ -13,8 +15,12 @@ from .models import (
 )
 from .serializers import( 
     MessageSerializer, 
-    RoomSerializer
+    RoomSerializer,
+    AddParticipantSerializer,
 )
+
+
+User = get_user_model()
 
 
 @extend_schema_view(
@@ -62,6 +68,7 @@ class RoomViewSet(viewsets.ModelViewSet):
     - Create direct or group rooms
     - Update room details
     - Delete rooms
+    - Add participants
     """
     serializer_class = RoomSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -75,8 +82,43 @@ class RoomViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save()
 
+    @extend_schema(
+        summary="Add participant to group",
+        description="Adds a participant to an existing group room using their email address.",
+        request=AddParticipantSerializer,
+        responses={200: RoomSerializer, 400: ErrorResponseSerializer, 403: ErrorResponseSerializer}
+    )
+    @action(detail=True, methods=['post'])
+    def add_participant(self, request, pk=None):
+        room = self.get_object()
+        
+        # Check permissions
+        if room.room_type != 'group':
+            return Response(
+                {"error": "Cannot add participants to a direct message room."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Only creator or existing participants can add others (depending on your logic)
+        # For now, let's say any participant can add others
+        if request.user not in room.participants.all():
+            raise PermissionDenied("You are not a participant in this room.")
 
+        serializer = AddParticipantSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            user = get_object_or_404(User, email=email)
+            
+            if user in room.participants.all():
+                return Response(
+                    {"error": "User is already a participant."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            room.participants.add(user)
+            return Response(RoomSerializer(room).data)
 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @extend_schema_view(
     list=extend_schema(
@@ -138,3 +180,9 @@ def room_list_page(request):
 
 def chat_room_page(request, room_id):
     return render(request, 'chat/chat_room.html', {'room_id': room_id})
+
+def room_detail_page(request, room_id):
+    return render(request, 'chat/room_detail.html', {'room_id': room_id})
+
+def profile_page(request):
+    return render(request, 'chat/profile.html')

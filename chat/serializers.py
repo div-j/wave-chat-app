@@ -36,7 +36,7 @@ class RoomSerializer(serializers.ModelSerializer):
     participant_emails = serializers.ListField(
         child=serializers.EmailField(),
         write_only=True,
-        required=True
+        required=False
     )
     participant_count = serializers.SerializerMethodField()
 
@@ -53,33 +53,38 @@ class RoomSerializer(serializers.ModelSerializer):
         return obj.participants.count()
 
     def validate_participant_emails(self, value):
-        if not value:
+        if self.instance is None and not value:
             raise serializers.ValidationError("At least one participant email is required.")
         return value
 
     def create(self, validated_data):
-        participant_emails = validated_data.pop('participant_emails')
+        participant_emails = validated_data.pop('participant_emails', [])
         request = self.context['request']
 
-        # Create the room
+        if not participant_emails:
+            raise serializers.ValidationError({'participant_emails': ['At least one participant email is required.']})
+
+        users = []
+        missing_emails = []
+        for email in participant_emails:
+            try:
+                users.append(User.objects.get(email=email))
+            except User.DoesNotExist:
+                missing_emails.append(email)
+
+        if missing_emails:
+            raise serializers.ValidationError({'participant_emails': [f"User(s) not found: {', '.join(missing_emails)}"]})
+
         room = Room.objects.create(
             name=validated_data.get('name'),
             room_type=validated_data.get('room_type', 'direct'),
             created_by=request.user
         )
-        
-        # Add creator as participant
-        room.participants.add(request.user)
-        
-        # Find and add other participants by email
-        for email in participant_emails:
-            try:
-                user = User.objects.get(email=email)
-                room.participants.add(user)
-            except User.DoesNotExist:
-                # Skip non-existent users or raise error
-                pass
+
+        room.participants.add(request.user, *users)
 
         return room
 
 
+class AddParticipantSerializer(serializers.Serializer):
+    email = serializers.EmailField()

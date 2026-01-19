@@ -79,8 +79,11 @@
             <a class="navbar-brand" href="/rooms/">
                 <i class="bi bi-arrow-left"></i> Back to Rooms
             </a>
-            <div class="d-flex align-items-center">
-                <span id="connectionStatus" class="text-light me-3">
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-light btn-sm" onclick="window.location.href='/profile/'" title="Profile">
+                    <i class="bi bi-person-circle"></i>
+                </button>
+                <span id="connectionStatus" class="text-light me-2">
                     <span class="spinner-border spinner-border-sm" role="status"></span>
                     Connecting...
                 </span>
@@ -99,6 +102,9 @@
                     <h5 class="mb-0" id="roomName">Loading...</h5>
                     <small class="text-muted" id="roomInfo"></small>
                 </div>
+                <a class="btn btn-sm btn-outline-secondary" href="/rooms/{{ room_id }}/details/">
+                    <i class="bi bi-info-circle"></i> Room Details
+                </a>
             </div>
         </div>
 
