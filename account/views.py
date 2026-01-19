@@ -4,13 +4,29 @@ from rest_framework.response import Response
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import smart_bytes, smart_str, DjangoUnicodeDecodeError
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.contrib.sites.shortcuts import get_current_site
+from django.urls import reverse
 
-from account.responseSerializers import (ResponseSerializer, ErrorResponseSerializer)
 
+from account.responseSerializers import (
+    ResponseSerializer, 
+    ErrorResponseSerializer
+    )
 
 from .serializers import (
-    EmailTokenObtainPairSerializer, RegisterSerializer, UserSerializer)
+    EmailTokenObtainPairSerializer, 
+    RegisterSerializer, 
+    UserSerializer,
+    RequestPasswordResetEmailSerializer,
+    SetNewPasswordSerializer
+    )
+
 from account.models import User
+
+from lib.utils import send_email
 
 
 
@@ -85,3 +101,74 @@ class ProfileViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(request.user, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def partial_update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+    
+
+@extend_schema_view(
+    post=extend_schema(
+        request=RequestPasswordResetEmailSerializer,
+        responses={200: ResponseSerializer, 400: ErrorResponseSerializer},
+        description="Request a password reset email.",
+        summary="Request Password Reset"
+    )
+)
+class RequestPasswordResetEmail(CreateAPIView):
+    serializer_class = RequestPasswordResetEmailSerializer
+    permission_classes = []
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        email = request.data.get('email', '')
+        if User.objects.filter(email=email).exists():
+            user = User.objects.get(email=email)
+            uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
+            token = PasswordResetTokenGenerator().make_token(user)
+            
+            # Generate password reset link
+            current_site = get_current_site(request).domain
+            relativeLink = reverse('reset-password-confirm', kwargs={'uidb64': uidb64, 'token': token})
+            absurl = 'http://' + current_site + relativeLink
+            email_body = f'Hello, \n\nUse the link below to reset your password:\n{absurl}\n\nIf you did not request this, please ignore this email.'
+            
+            # Send email (prints to console in dev)
+            print(f"DEBUG: Sending email to {user.email}") # Added debug print
+            send_email(
+                subject="Reset your password",
+                message=email_body,
+                from_email="noreply@engitech.com",
+                recipient_list=[user.email]
+            )
+        else:
+            print(f"DEBUG: User with email '{email}' not found") # Added debug print
+
+        return Response({'success': 'We have sent you a link to reset your password'}, status=status.HTTP_200_OK)
+
+
+@extend_schema_view(
+    patch=extend_schema(
+        request=SetNewPasswordSerializer,
+        responses={200: ResponseSerializer, 400: ErrorResponseSerializer},
+        description="Set a new password using the reset token.",
+        summary="Set New Password"
+    )
+)
+
+class SetNewPasswordAPIView(CreateAPIView):
+    serializer_class = SetNewPasswordSerializer
+    permission_classes = []
+
+    def patch(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response({'success': True, 'message': 'Password reset success'}, status=status.HTTP_200_OK)

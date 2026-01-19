@@ -6,6 +6,8 @@ from .views import (
     chat_room_page,
     room_detail_page,
     profile_page,
+    forgot_password_page,
+    reset_password_page,
 )
 
 urlpatterns = [
@@ -16,4 +18,6 @@ urlpatterns = [
     path('chat/<int:room_id>/', chat_room_page, name='chat-room'),
     path('rooms/<int:room_id>/details/', room_detail_page, name='room-detail-page'),
     path('profile/', profile_page, name='profile-page'),
+    path('forgot-password/', forgot_password_page, name='forgot-password'),
+    path('reset-password/<uidb64>/<token>/', reset_password_page, name='reset-password-confirm'),
 ]

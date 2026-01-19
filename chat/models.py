@@ -35,8 +35,8 @@ class Room(models.Model):
         if self.room_type == 'group':
             return self.name or f"Group {self.id}"
         # For direct messages, show participant emails
-        participants = self.participants.all()[:2]
-        if participants.count() == 2:
+        participants = list(self.participants.all()[:2])
+        if len(participants) == 2:
             return f"{participants[0].email} - {participants[1].email}"
         return f"Room {self.id}"
     

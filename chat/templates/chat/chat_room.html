@@ -135,7 +135,7 @@
 
 {% block extra_js %}
     <script>
-        const ROOM_ID = {{ room_id }};
+        const ROOM_ID = "{{ room_id }}";
         const API_URL = window.location.origin;
         const WS_URL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         let chatSocket = null;

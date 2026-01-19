@@ -195,3 +195,5 @@ SPECTACULAR_SETTINGS = {
 # CORS Settings
 CORS_ALLOW_ALL_ORIGINS = True  # For development only
 
+# Email Settings (for development)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

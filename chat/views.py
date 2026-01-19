@@ -91,6 +91,7 @@ class RoomViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_participant(self, request, pk=None):
         room = self.get_object()
+        context = {'request': request}
         
         # Check permissions
         if room.room_type != 'group':
@@ -116,7 +117,7 @@ class RoomViewSet(viewsets.ModelViewSet):
                 )
             
             room.participants.add(user)
-            return Response(RoomSerializer(room).data)
+            return Response(RoomSerializer(room, context=context).data)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -186,3 +187,9 @@ def room_detail_page(request, room_id):
 
 def profile_page(request):
     return render(request, 'chat/profile.html')
+
+def forgot_password_page(request):
+    return render(request, 'chat/forgot_password.html')
+
+def reset_password_page(request, uidb64, token):
+    return render(request, 'chat/reset_password.html', {'uidb64': uidb64, 'token': token})
